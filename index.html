@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Red Tractor - 3D Viewer</title>
+  <!-- Încărcare componenta oficială Google model-viewer -->
+  <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.5.0/model-viewer.min.js"></script>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      background-color: #16181d;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      overflow: hidden;
+    }
+
+    model-viewer {
+      width: 100%;
+      height: 100%;
+      background: radial-gradient(circle at center, #262a33 0%, #121418 100%);
+      --progress-bar-color: #e63946;
+      --progress-bar-height: 4px;
+    }
+
+    /* Bară de progres personalizată pentru descărcări mari pe GSM */
+    .progress-bar {
+      display: block;
+      width: 60%;
+      max-width: 320px;
+      height: 6px;
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      border-radius: 4px;
+      background-color: rgba(255, 255, 255, 0.12);
+      overflow: hidden;
+    }
+
+    .progress-bar.hide {
+      visibility: hidden;
+      transition: visibility 0.3s;
+    }
+
+    .update-bar {
+      background-color: #e63946;
+      width: 0%;
+      height: 100%;
+      transition: width 0.1s ease;
+    }
+
+    /* Buton discret de resetare a vederii */
+    .controls {
+      position: absolute;
+      bottom: 20px;
+      right: 20px;
+      display: flex;
+      gap: 10px;
+      z-index: 10;
+    }
+
+    button {
+      background: rgba(30, 33, 40, 0.85);
+      color: #f1f3f5;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      padding: 10px 16px;
+      border-radius: 8px;
+      font-size: 14px;
+      cursor: pointer;
+      backdrop-filter: blur(6px);
+      transition: background 0.2s, border-color 0.2s;
+    }
+
+    button:hover {
+      background: rgba(50, 55, 66, 0.95);
+      border-color: rgba(255, 255, 255, 0.35);
+    }
+  </style>
+</head>
+<body>
+
+  <model-viewer
+    id="tractor-viewer"
+    src="https://dl.dropbox.com/scl/fi/k8qm3px044sumowezc80k/Red_Tractor.glb?rlkey=6p6xdjf28t9ivo5nuaxcq92ce&st=tsl0vemt&dl=1"
+    alt="Red Tractor 3D Model"
+    camera-controls
+    touch-action="pan-y"
+    auto-rotate
+    auto-rotate-delay="3000"
+    rotation-per-second="15deg"
+    shadow-intensity="1.2"
+    shadow-softness="0.8"
+    exposure="1.0"
+    environment-image="neutral"
+    interaction-prompt="auto">
+
+    <div class="progress-bar" slot="progress-bar">
+      <div class="update-bar"></div>
+    </div>
+
+    <div class="controls">
+      <button id="reset-cam" title="Resetează camera">Resetare vedere</button>
+    </div>
+  </model-viewer>
+
+  <script>
+    const viewer = document.querySelector('#tractor-viewer');
+    const progressBar = document.querySelector('.progress-bar');
+    const updateBar = document.querySelector('.update-bar');
+    const resetBtn = document.querySelector('#reset-cam');
+
+    // Actualizare bară de progres la descărcarea GLB-ului
+    viewer.addEventListener('progress', (event) => {
+      const progress = event.detail.totalProgress * 100;
+      updateBar.style.width = `${progress}%`;
+      if (progress === 100) {
+        progressBar.classList.add('hide');
+      } else {
+        progressBar.classList.remove('hide');
+      }
+    });
+
+    // Resetare poziție și zoom cameră
+    resetBtn.addEventListener('click', () => {
+      viewer.cameraOrbit = 'auto auto auto';
+      viewer.fieldOfView = 'auto';
+    });
+  </script>
+
+</body>
+</html>
