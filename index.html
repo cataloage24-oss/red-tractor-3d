@@ -4,7 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Red Tractor - 3D Viewer</title>
-  <!-- Încărcare componenta oficială Google model-viewer -->
   <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.5.0/model-viewer.min.js"></script>
   <style>
     * {
@@ -19,6 +18,7 @@
       background-color: #16181d;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       overflow: hidden;
+      color: #f1f3f5;
     }
 
     model-viewer {
@@ -29,7 +29,6 @@
       --progress-bar-height: 4px;
     }
 
-    /* Bară de progres personalizată pentru descărcări mari pe GSM */
     .progress-bar {
       display: block;
       width: 60%;
@@ -56,7 +55,127 @@
       transition: width 0.1s ease;
     }
 
-    /* Buton discret de resetare a vederii */
+    /* Buton toggle panou sus-dreapta */
+    .panel-toggle {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      z-index: 20;
+      background: rgba(24, 27, 34, 0.88);
+      color: #f1f3f5;
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      padding: 9px 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      backdrop-filter: blur(8px);
+    }
+
+    .panel-toggle:hover {
+      border-color: rgba(255, 255, 255, 0.35);
+    }
+
+    /* Panou controale iluminare & afișare */
+    .inspector-panel {
+      position: absolute;
+      top: 56px;
+      right: 16px;
+      width: 280px;
+      max-width: calc(100vw - 32px);
+      background: rgba(22, 25, 32, 0.92);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      border-radius: 12px;
+      padding: 14px;
+      z-index: 15;
+      backdrop-filter: blur(10px);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+    }
+
+    .inspector-panel.collapsed {
+      display: none;
+    }
+
+    .group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .group-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #adb5bd;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .seg-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+    }
+
+    .seg-btn {
+      background: rgba(255, 255, 255, 0.05);
+      color: #dee2e6;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      padding: 7px 8px;
+      border-radius: 7px;
+      font-size: 12px;
+      cursor: pointer;
+    }
+
+    .seg-btn.active {
+      background: rgba(230, 57, 70, 0.22);
+      border-color: #e63946;
+      color: #ffffff;
+      font-weight: 600;
+    }
+
+    select, input[type="range"] {
+      width: 100%;
+    }
+
+    select {
+      background: rgba(255, 255, 255, 0.06);
+      color: #f1f3f5;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      padding: 7px 8px;
+      border-radius: 7px;
+      font-size: 12px;
+    }
+
+    input[type="range"] {
+      accent-color: #e63946;
+      cursor: pointer;
+    }
+
+    .swatch-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .swatch {
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      border: 2px solid rgba(255, 255, 255, 0.25);
+      cursor: pointer;
+      padding: 0;
+    }
+
+    .swatch.active {
+      border-color: #ffffff;
+      transform: scale(1.08);
+    }
+
+    /* Butoane jos-dreapta */
     .controls {
       position: absolute;
       bottom: 20px;
@@ -66,25 +185,79 @@
       z-index: 10;
     }
 
-    button {
-      background: rgba(30, 33, 40, 0.85);
+    .action-btn {
+      background: rgba(30, 33, 40, 0.88);
       color: #f1f3f5;
       border: 1px solid rgba(255, 255, 255, 0.15);
-      padding: 10px 16px;
+      padding: 10px 14px;
       border-radius: 8px;
-      font-size: 14px;
+      font-size: 13px;
       cursor: pointer;
       backdrop-filter: blur(6px);
-      transition: background 0.2s, border-color 0.2s;
     }
 
-    button:hover {
-      background: rgba(50, 55, 66, 0.95);
+    .action-btn:hover {
       border-color: rgba(255, 255, 255, 0.35);
     }
   </style>
 </head>
 <body>
+
+  <button class="panel-toggle" id="toggle-panel">Iluminare & Afișare</button>
+
+  <aside class="inspector-panel collapsed" id="inspector-panel">
+    <div class="group">
+      <div class="group-label"><span>Mod afișare</span></div>
+      <div class="seg-row">
+        <button class="seg-btn active" data-mode="full">Texturi + Culori</button>
+        <button class="seg-btn" data-mode="clay">Geometrie (Clay)</button>
+      </div>
+    </div>
+
+    <div class="group">
+      <div class="group-label"><span>Iluminare mediu</span></div>
+      <select id="env-select">
+        <option value="neutral" selected>Neutral Studio</option>
+        <option value="legacy">Legacy Soft</option>
+        <option value="https://modelviewer.dev/shared-assets/environments/spruit_sunrise_1k.hdr">Exterior Lumină Zi</option>
+        <option value="https://modelviewer.dev/shared-assets/environments/moon_1k.hdr">Contrast Înalt</option>
+      </select>
+    </div>
+
+    <div class="group">
+      <div class="group-label">
+        <span>Expunere</span>
+        <span id="exposure-val">1.00</span>
+      </div>
+      <input type="range" id="exposure-slider" min="0.4" max="2.2" step="0.05" value="1.0">
+    </div>
+
+    <div class="group">
+      <div class="group-label">
+        <span>Rotație lumină</span>
+        <span id="env-rot-val">0°</span>
+      </div>
+      <input type="range" id="env-rot-slider" min="0" max="360" step="5" value="0">
+    </div>
+
+    <div class="group">
+      <div class="group-label">
+        <span>Intensitate umbre</span>
+        <span id="shadow-val">1.20</span>
+      </div>
+      <input type="range" id="shadow-slider" min="0" max="2.5" step="0.1" value="1.2">
+    </div>
+
+    <div class="group">
+      <div class="group-label"><span>Fundal</span></div>
+      <div class="swatch-row" id="bg-swatches">
+        <button class="swatch active" style="background: #16181d;" data-bg="radial-gradient(circle at center, #262a33 0%, #121418 100%)" data-body="#16181d" title="Dark Studio"></button>
+        <button class="swatch" style="background: #2b303a;" data-bg="radial-gradient(circle at center, #3b4250 0%, #1d2128 100%)" data-body="#2b303a" title="Slate"></button>
+        <button class="swatch" style="background: #0a0b0e;" data-bg="#0a0b0e" data-body="#0a0b0e" title="Black"></button>
+        <button class="swatch" style="background: #dce1e7;" data-bg="radial-gradient(circle at center, #f1f3f5 0%, #cfd6de 100%)" data-body="#dce1e7" title="Light Gray"></button>
+      </div>
+    </div>
+  </aside>
 
   <model-viewer
     id="tractor-viewer"
@@ -99,6 +272,7 @@
     shadow-softness="0.8"
     exposure="1.0"
     environment-image="neutral"
+    environment-rotation="0deg"
     interaction-prompt="auto">
 
     <div class="progress-bar" slot="progress-bar">
@@ -106,7 +280,8 @@
     </div>
 
     <div class="controls">
-      <button id="reset-cam" title="Resetează camera">Resetare vedere</button>
+      <button class="action-btn" id="toggle-rotate">Auto-rotație: ON</button>
+      <button class="action-btn" id="reset-cam">Resetare vedere</button>
     </div>
   </model-viewer>
 
@@ -115,8 +290,111 @@
     const progressBar = document.querySelector('.progress-bar');
     const updateBar = document.querySelector('.update-bar');
     const resetBtn = document.querySelector('#reset-cam');
+    const rotateBtn = document.querySelector('#toggle-rotate');
+    const togglePanelBtn = document.querySelector('#toggle-panel');
+    const panel = document.querySelector('#inspector-panel');
 
-    // Actualizare bară de progres la descărcarea GLB-ului
+    const exposureSlider = document.querySelector('#exposure-slider');
+    const exposureVal = document.querySelector('#exposure-val');
+    const envSelect = document.querySelector('#env-select');
+    const envRotSlider = document.querySelector('#env-rot-slider');
+    const envRotVal = document.querySelector('#env-rot-val');
+    const shadowSlider = document.querySelector('#shadow-slider');
+    const shadowVal = document.querySelector('#shadow-val');
+    const modeButtons = document.querySelectorAll('.seg-btn');
+    const swatches = document.querySelectorAll('.swatch');
+
+    // Salvăm starea originală a materialelor pentru a restaura texturile și culorile
+    const originalMaterials = new Map();
+
+    viewer.addEventListener('load', () => {
+      originalMaterials.clear();
+      viewer.model.materials.forEach((mat) => {
+        const pbr = mat.pbrMetallicRoughness;
+        originalMaterials.set(mat, {
+          baseColorFactor: [...pbr.baseColorFactor],
+          baseColorTexture: pbr.baseColorTexture ? pbr.baseColorTexture.texture : null,
+          metallicFactor: pbr.metallicFactor,
+          roughnessFactor: pbr.roughnessFactor,
+        });
+      });
+    });
+
+    function applyDisplayMode(mode) {
+      if (!viewer.model) return;
+      viewer.model.materials.forEach((mat) => {
+        const saved = originalMaterials.get(mat);
+        if (!saved) return;
+        const pbr = mat.pbrMetallicRoughness;
+
+        if (mode === 'clay') {
+          if (pbr.baseColorTexture) {
+            pbr.baseColorTexture.setTexture(null);
+          }
+          pbr.setBaseColorFactor([0.72, 0.75, 0.80, 1.0]);
+          pbr.setMetallicFactor(0.05);
+          pbr.setRoughnessFactor(0.78);
+        } else {
+          if (saved.baseColorTexture && pbr.baseColorTexture) {
+            pbr.baseColorTexture.setTexture(saved.baseColorTexture);
+          }
+          pbr.setBaseColorFactor(saved.baseColorFactor);
+          pbr.setMetallicFactor(saved.metallicFactor);
+          pbr.setRoughnessFactor(saved.roughnessFactor);
+        }
+      });
+    }
+
+    modeButtons.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        modeButtons.forEach((b) => b.classList.remove('active'));
+        btn.classList.add('active');
+        applyDisplayMode(btn.dataset.mode);
+      });
+    });
+
+    togglePanelBtn.addEventListener('click', () => {
+      panel.classList.toggle('collapsed');
+    });
+
+    envSelect.addEventListener('change', (e) => {
+      viewer.environmentImage = e.target.value;
+    });
+
+    exposureSlider.addEventListener('input', (e) => {
+      const val = parseFloat(e.target.value);
+      viewer.exposure = val;
+      exposureVal.textContent = val.toFixed(2);
+    });
+
+    envRotSlider.addEventListener('input', (e) => {
+      const deg = e.target.value;
+      viewer.environmentRotation = `${deg}deg`;
+      envRotVal.textContent = `${deg}°`;
+    });
+
+    shadowSlider.addEventListener('input', (e) => {
+      const val = parseFloat(e.target.value);
+      viewer.shadowIntensity = val;
+      shadowVal.textContent = val.toFixed(2);
+    });
+
+    swatches.forEach((swatch) => {
+      swatch.addEventListener('click', () => {
+        swatches.forEach((s) => s.classList.remove('active'));
+        swatch.classList.add('active');
+        viewer.style.background = swatch.dataset.bg;
+        document.body.style.backgroundColor = swatch.dataset.body;
+      });
+    });
+
+    let autoRotate = true;
+    rotateBtn.addEventListener('click', () => {
+      autoRotate = !autoRotate;
+      viewer.autoRotate = autoRotate;
+      rotateBtn.textContent = `Auto-rotație: ${autoRotate ? 'ON' : 'OFF'}`;
+    });
+
     viewer.addEventListener('progress', (event) => {
       const progress = event.detail.totalProgress * 100;
       updateBar.style.width = `${progress}%`;
@@ -127,7 +405,6 @@
       }
     });
 
-    // Resetare poziție și zoom cameră
     resetBtn.addEventListener('click', () => {
       viewer.cameraOrbit = 'auto auto auto';
       viewer.fieldOfView = 'auto';
